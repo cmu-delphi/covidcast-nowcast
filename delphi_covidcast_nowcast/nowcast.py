@@ -8,6 +8,7 @@ from delphi_covidcast_nowcast.data_containers import SignalConfig
 from delphi_covidcast_nowcast.deconvolution.deconvolution import deconvolve_signal
 from delphi_covidcast_nowcast.nowcast_fusion import covariance, fusion
 from delphi_covidcast_nowcast.sensorization.sensor import get_sensors
+from delphi_covidcast_nowcast.statespace.statespace import generate_statespace
 
 
 def nowcast(input_dates: List[int],
@@ -16,6 +17,7 @@ def nowcast(input_dates: List[int],
             convolved_truth_indicator: SignalConfig,
             kernel: List[float],
             nowcast_dates: List[int] = "*",
+            use_latest_issue: bool = True,
             ) -> Tuple[np.ndarray, np.ndarray, List]:
     """
 
@@ -33,12 +35,19 @@ def nowcast(input_dates: List[int],
         Delay distribution to deconvolve with convolved_truth_indicator
     nowcast_dates
         Dates to get predictions for. Defaults to input_dates + additional day.
+    use_latest_issue
+        boolean specifying whether to use the latest issue to compute missing sensor values. If
+        False, will use the data that was available as of the target date.
 
     Returns
     -------
         (predicted values, std devs, locations)
     """
-    # get geo mappings
+    # check that exactly one state location is given. handling smaller/multiple state
+    # models is a future goal
+    input_states = [loc[0] for loc in input_locations if loc[1] == 'state']
+    if len(input_states) != 1:
+        raise Exception('none or multiple US state locations specified')
 
     # deconvolve for ground truth
     ground_truth = deconvolve_signal(convolved_truth_indicator, input_dates,
@@ -48,28 +57,32 @@ def nowcast(input_dates: List[int],
     train_sensors = get_sensors(input_dates[0], input_dates[-1],
                                 sensor_indicators, ground_truth,
                                 # ground_truth = None if compute_missing=False
-                                compute_missing=True)  # change to false once we have DB
+                                compute_missing=True,  # change to false once we have DB
+                                use_latest_issue=use_latest_issue)
 
     now_sensors = get_sensors(nowcast_dates[0], nowcast_dates[0],
                               sensor_indicators, ground_truth,
-                              compute_missing=True)
+                              compute_missing=True,
+                              use_latest_issue=use_latest_issue)
 
     ## put into matrix form
     # convert to dict indexed by loc to make matching across train/now easier
-    y = dict((s.geo_value, s) for s in ground_truth)
+    y = dict(((s.geo_value, s.geo_type), s) for s in ground_truth)
     n_sensor_locs = len(sensor_indicators) * len(input_locations)
     noise = np.full((len(input_dates), n_sensor_locs), np.nan)
     z = np.full((1, n_sensor_locs), np.nan)
+    valid_location_types = []
     j = 0
     for sensor in sensor_indicators:
         # convert to dict indexed by loc to make matching across train/now easier
-        train_series = dict((s.geo_value, s) for s in train_sensors[sensor])
-        now_series = dict((s.geo_value, s) for s in now_sensors[sensor])
-        valid_sensor_locs = set(train_series.keys()) & set(now_series.keys())
+        train_series = dict(((s.geo_value, s.geo_type), s) for s in train_sensors[sensor])
+        now_series = dict(((s.geo_value, s.geo_type), s) for s in now_sensors[sensor])
+        valid_locs = set(train_series.keys()) & set(now_series.keys())
 
-        for loc in sorted(valid_sensor_locs):
+        for loc in sorted(valid_locs):
             noise[:, j] = y[loc].values - train_series[loc].values
             z[:, j] = now_series[loc].values
+            valid_location_types.append(loc)
             j += 1
 
     # cull nan columns
@@ -80,11 +93,11 @@ def nowcast(input_dates: List[int],
 
     print(noise.shape, z.shape)
 
-    # generate statespace
-    # to do
-    H = np.ones((noise.shape[1], len(ground_truth))) / len(ground_truth)
-    H[0, 0] = 1
-    W = np.ones((len(ground_truth), len(ground_truth))) / len(ground_truth)
+    if len(valid_location_types) != noise.shape[1]:
+        raise Exception('mismatched input locations and sensor matrix')
+
+    # determine statespace
+    H, W, output_locations = generate_statespace(input_states[0], valid_location_types)
 
     # estimate covariance
     R = covariance.mle_cov(noise, covariance.BlendDiagonal2)
@@ -95,4 +108,4 @@ def nowcast(input_dates: List[int],
     stdev = np.sqrt(np.diag(S)).reshape(y.shape)
 
     # return output
-    pass
+    return y, stdev, output_locations
