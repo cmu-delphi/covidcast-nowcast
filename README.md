@@ -49,7 +49,7 @@ This module contains methods for collecting metrics on the database server under
      │    ├── delphi  
      │    └── undefx  
     ```
-3. Before building the images, you will need to make two edits:  
+3. Before building the images, you will need to make two edits in the operations repo:  
     a. Edit `repos/delphi/operations/src/secrets.py` by setting `db.host = 'delphi_database_epidata'` and 
     `set db.epi = ('user', 'pass')`, which will match the testing docker image.  
     b. Add `COPY common /common` to `repos/delphi/operations/dev/docker/python/Dockerfile` after copying source files.
@@ -57,8 +57,9 @@ This module contains methods for collecting metrics on the database server under
     a. Build the `delphi_web`, `delphi_web_epidata`, `delphi_database`, and `delphi_python` images.   
     b. Create the `delphi-net` network.  
     c. Run the database and web server. 
-7. Run the acquisition script through the Python docker container to upload the data to the server. If you reuse a 
-   sensor name this will fail; You will have to either rename the sensor or delete and restart the database.
+7. Run the acquisition script through the Python docker container to upload the data to the server. If you reupload the 
+   same sensor, even if the values change, this will currently fail; You will have to either rename the sensor or 
+   delete and restart the database.
    ```
     docker run --rm -i --network delphi-net  delphi_python  python3 -m delphi.epidata.acquisition.covidcast_nowcast.load_sensors
    ```
