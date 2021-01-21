@@ -57,10 +57,25 @@ This module contains methods for collecting metrics on the database server under
     a. Build the `delphi_web`, `delphi_web_epidata`, `delphi_database`, and `delphi_python` images.   
     b. Create the `delphi-net` network.  
     c. Run the database and web server. 
-7. Run the acquisition script through the Python docker container to upload the data to the server.
+7. Run the acquisition script through the Python docker container to upload the data to the server. If you reuse a 
+   sensor name this will fail; You will have to either rename the sensor or delete and restart the database.
    ```
     docker run --rm -i --network delphi-net  delphi_python  python3 -m delphi.epidata.acquisition.covidcast_nowcast.load_sensors
    ```
 8. You should now be able to run the nowcast code (outside the docker container) and it will retrieve any stored 
    historical data.
+   
+Example:
+
+This example can be used to both generate the sensorized data to upload, and also to demonstrate retrieving stored data 
+once the upload is done. In the first run, a "No historical results found" message will be printed. Once there is data 
+that is retrieved, this message will not appear
+```
+from delphi_covidcast_nowcast.sensorization import sensor                                                                                                   
+from delphi_covidcast_nowcast.data_containers import LocationSeries, SignalConfig               
+                                                            
+example_sensors = [SignalConfig("fb-survey", "smoothed_cli", "test_sensor")]
+example_truth = [LocationSeries("ca", "state", [20210101, 20210102, 20210103, 20210104, 20210105, 20210106, 20210107], [1,5,3,5,7,3,7])]                                                                                     
+%time sensor.get_sensors(20210101, 20210108, example_sensors, example_truth, compute_missing=True, use_latest_issue=True, export_data=True)
+```
    

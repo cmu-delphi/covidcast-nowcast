@@ -6,7 +6,7 @@ from collections import defaultdict
 
 import numpy as np
 from delphi_epidata import Epidata
-# from ..delphi_epidata import Epidata used for local testing
+# from ..delphi_epidata import Epidata  # used for local testing
 from pandas import date_range
 
 from .ar_model import compute_ar_sensor
@@ -145,6 +145,7 @@ def get_regression_sensor_values(sensor: SignalConfig,
     )
     if (not compute_missing) or (not missing_dates):
         return output
+    print(f"Missing dates: {missing_dates}")
     # gets all available data for now, could be optimized to only get a window
     if use_latest_issue:
         response = Epidata.covidcast(data_source=sensor.source,
