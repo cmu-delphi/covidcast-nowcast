@@ -9,7 +9,6 @@ from ..data_containers import LocationSeries
 def compute_ar_sensor(day: int,
                       values: LocationSeries,
                       ar_size: int = 2,
-                      include_intercept: bool = False,
                       lambda_: float = 0.1) -> float:
     """
     Fit AR model through least squares and get sensorization value for a given date.

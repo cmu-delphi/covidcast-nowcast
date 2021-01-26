@@ -7,7 +7,7 @@ import numpy as np
 from delphi_covidcast_nowcast.data_containers import SignalConfig
 from delphi_covidcast_nowcast.deconvolution.deconvolution import deconvolve_signal
 from delphi_covidcast_nowcast.nowcast_fusion import covariance, fusion
-from delphi_covidcast_nowcast.sensorization.sensor import get_sensors
+from delphi_covidcast_nowcast.sensorization.sensor import historical_sensors
 from delphi_covidcast_nowcast.statespace.statespace import generate_statespace
 
 
@@ -54,16 +54,16 @@ def nowcast(input_dates: List[int],
                                      input_locations, np.array(kernel))
 
     # fit sensors
-    train_sensors = get_sensors(input_dates[0], input_dates[-1],
-                                sensor_indicators, ground_truth,
-                                # ground_truth = None if compute_missing=False
-                                compute_missing=True,  # change to false once we have DB
-                                use_latest_issue=use_latest_issue)
+    train_sensors = historical_sensors(input_dates[0], input_dates[-1],
+                                       sensor_indicators, ground_truth,
+                                       # ground_truth = None if compute_missing=False
+                                       compute_missing=True,  # change to false once we have DB
+                                       use_latest_issue=use_latest_issue)
 
-    now_sensors = get_sensors(nowcast_dates[0], nowcast_dates[0],
-                              sensor_indicators, ground_truth,
-                              compute_missing=True,
-                              use_latest_issue=use_latest_issue)
+    now_sensors = historical_sensors(nowcast_dates[0], nowcast_dates[0],
+                                     sensor_indicators, ground_truth,
+                                     compute_missing=True,
+                                     use_latest_issue=use_latest_issue)
 
     ## put into matrix form
     # convert to dict indexed by loc to make matching across train/now easier

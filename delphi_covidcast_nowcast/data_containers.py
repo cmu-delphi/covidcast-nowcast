@@ -1,15 +1,15 @@
 from dataclasses import dataclass, field
-from typing import List, Union, Tuple
+from typing import List, Union
 
-from pandas import date_range
 from numpy import ndarray, nan, nanmean, isnan
+from pandas import date_range
 
 
 @dataclass(frozen=True)
 class SignalConfig:
-    source: str = None
-    signal: str = None
-    name: str = None
+    source: str
+    signal: str
+    name: str
 
 
 @dataclass

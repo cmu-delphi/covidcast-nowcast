@@ -46,6 +46,7 @@ def compute_regression_sensor(day: int,
         *[(i, j) for i, j in zip(train_Y, train_covariates) if not (np.isnan(i) or np.isnan(j))]
     )
     if len(train_Y) < 5:  # some arbitrary min num observations:
+        print("insufficient observations")
         return np.nan
     train_Y = np.array(train_Y)
     train_covariates = np.array(train_covariates)
