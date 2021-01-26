@@ -64,7 +64,9 @@ def compute_sensors(as_of_date: int,
                     LocationSeries(loc.geo_value, loc.geo_type, [sensor_pred_date], [reg_sensor])
                 )
     if export_data:
-        pass  # TODO fill this in
+        for sensor, locations in output.items():
+            for loc in locations:
+                print(_export_to_csv(loc, sensor, as_of_date))
     return output
 
 
@@ -117,12 +119,10 @@ def historical_sensors(start_date: int,
     return output
 
 
-def _export_to_csv(value,
-                   sensor,
-                   as_of_date,
-                   geo_type,
-                   geo_value,
-                   receiving_dir="/common/covidcast_nowcast/receiving"  # convert this to use params file
+def _export_to_csv(value: LocationSeries,
+                   sensor: SignalConfig,
+                   as_of_date: int,
+                   receiving_dir: str="./receiving"  # convert this to use params file
                    ) -> str:
     """Save value to csv for upload to epidata database
 
@@ -130,11 +130,18 @@ def _export_to_csv(value,
     """
     export_dir = os.path.join(receiving_dir, sensor.source)
     os.makedirs(export_dir, exist_ok=True)
-    time_value = _lag_date(as_of_date, sensor.lag)
-    export_file = os.path.join(export_dir, f"{time_value}_{geo_type}_{sensor.signal}.csv")
-    with open(export_file, "w") as f:
-        f.write("sensor_name,geo_value,value,lag,issue\n")
-        f.write(f"{sensor.name},{geo_value},{value},{sensor.lag},{as_of_date}\n")
+    time_value = value.dates[0]
+    export_file = os.path.join(export_dir, f"{time_value}_{value.geo_type}_{sensor.signal}.csv")
+    if os.path.exists(export_file):
+        with open(export_file, "a") as f:
+            f.write(
+                f"{sensor.name},{value.geo_value},{value.get_value(time_value)},{sensor.lag},{as_of_date}\n")
+    else:
+        with open(export_file, "a") as f:
+            f.write("sensor_name,geo_value,value,lag,issue\n")
+            f.write(
+                f"{sensor.name},{value.geo_value},{value.get_value(time_value)},{sensor.lag},{as_of_date}\n")
+
     return export_file
 
 

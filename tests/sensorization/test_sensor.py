@@ -79,9 +79,9 @@ class TestExportToCSV:
                                    signal="sig",
                                    name="test",
                                    lag=4)
+        test_value = LocationSeries("ca", "state", [20200101], [1.5])
         with tempfile.TemporaryDirectory() as tmpdir:
-            out_file = _export_to_csv(1.5, test_sensor, 20200105,
-                                      "state", "ca", receiving_dir=tmpdir)
+            out_file = _export_to_csv(test_value, test_sensor, 20200105, receiving_dir=tmpdir)
             assert os.path.isfile(out_file)
             assert out_file.endswith("src/20200101_state_sig.csv")
             with open(out_file) as f:
