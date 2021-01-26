@@ -41,3 +41,12 @@ class TestComputeRegressionSensor:
                                               20200106, 20200107])
         assert np.isnan(compute_regression_sensor(20200101, test_covariate, test_response))
         assert np.isnan(compute_regression_sensor(20200106, test_covariate, test_response))
+
+    def test_compute_regression_sensor_out_of_range(self):
+        test_covariate = LocationSeries(values=[1, 3, np.nan, 6, 7, 9, 12],
+                                        dates=[20200101, 20200102, 20200103, 20200104, 20200105,
+                                               20200106, 20200107])
+        test_response = LocationSeries(values=[10, 16, 22, 29, 28, 35, 42],
+                                       dates=[20200101, 20200102, 20200103, 20200104, 20200105,
+                                              20200106, 20200107])
+        assert np.isnan(compute_regression_sensor(20200116, test_covariate, test_response))

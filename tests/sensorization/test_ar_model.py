@@ -62,3 +62,10 @@ class TestComputeARSensor:
             values=[-4.27815483, -4.83962077],
             dates=[20200101, 20200102])
         assert np.isnan(compute_ar_sensor(20200102, values))
+        assert np.isnan(compute_ar_sensor(20200107, values))
+
+    def test_compute_ar_sensor_out_of_range(self):
+        values = LocationSeries(
+            values=[-4.27815483, -4.83962077],
+            dates=[20200101, 20200102])
+        assert np.isnan(compute_ar_sensor(20200107, values))
