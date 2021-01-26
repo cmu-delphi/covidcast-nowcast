@@ -104,16 +104,14 @@ def historical_sensors(start_date: int,
     output = defaultdict(list)
     for location in ground_truths:
         ar_sensor, missing_dates = get_historical_sensor_data(
-            ground_truth_sensor, location.geo_type, location.geo_value, start_date, end_date
+            ground_truth_sensor, location.geo_value, location.geo_type, start_date, end_date
         )
-        print(f"Missing historical AR dates: {missing_dates}")
         if not ar_sensor.empty:
             output[ground_truth_sensor].append(ar_sensor)
         for sensor in sensors:
             reg_sensor, missing_dates = get_historical_sensor_data(
-                sensor, location.geo_type, location.geo_value, start_date, end_date
+                sensor, location.geo_value, location.geo_type, start_date, end_date
             )
-            print(f"Missing historical sensor {sensor} dates: {missing_dates}")
             if not reg_sensor.empty:
                 output[sensor].append(reg_sensor)
     return output

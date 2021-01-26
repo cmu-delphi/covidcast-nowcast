@@ -1,7 +1,6 @@
 import asyncio
 from typing import Tuple, List, Dict
 from itertools import product
-from collections import defaultdict
 
 from numpy import isnan
 from pandas import date_range

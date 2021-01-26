@@ -57,26 +57,26 @@ This module contains methods for collecting metrics on the database server under
     a. Build the `delphi_web`, `delphi_web_epidata`, `delphi_database`, and `delphi_python` images.   
     b. Create the `delphi-net` network.  
     c. Run the database and web server. 
-7. Run the acquisition script through the Python docker container to upload the data to the server. If you reupload the 
-   same sensor, even if the values change, this will currently fail; You will have to either rename the sensor or 
-   delete and restart the database.
+7. Run the acquisition script through the Python docker container to upload the data to the server. 
    ```
-    docker run --rm -i --network delphi-net  delphi_python  python3 -m delphi.epidata.acquisition.covidcast_nowcast.load_sensors
+   docker run --rm -i --network delphi-net  delphi_python  python3 -m delphi.epidata.acquisition.covidcast_nowcast.load_sensors
    ```
 8. You should now be able to run the nowcast code (outside the docker container) and it will retrieve any stored 
    historical data.
    
 Example:
 
-This example can be used to both generate the sensorized data to upload, and also to demonstrate retrieving stored data 
-once the upload is done. In the first run, a "No historical results found" message will be printed. Once there is data 
-that is retrieved, this message will not appear
 ```
-from delphi_covidcast_nowcast.sensorization import sensor                                                                                                   
-from delphi_covidcast_nowcast.data_containers import LocationSeries, SignalConfig               
-                                                            
-example_sensors = [SignalConfig("fb-survey", "smoothed_cli", "test_sensor")]
-example_truth = [LocationSeries("ca", "state", [20210101, 20210102, 20210103, 20210104, 20210105, 20210106, 20210107], [1,5,3,5,7,3,7])]                                                                                     
-%time sensor.get_sensors(20210101, 20210108, example_sensors, example_truth, compute_missing=True, use_latest_issue=True, export_data=True)
+import numpy as np
+from delphi_covidcast_nowcast.sensorization import sensor
+from delphi_covidcast_nowcast.data_containers import LocationSeries, SignalConfig 
+example_sensors = [SignalConfig("fb-survey", "smoothed_cli", "test_sensor", 2)]
+example_truth_sensor = SignalConfig("testsrc", "testsig", "testtruth", 2)
+
+states = ['al','ak','az','ar','ca','co','ct','de','dc','fl','ga','hi','id','il','in','ia','ks','ky','la','me','md','ma','mi','mn','ms','mo','mt','ne','nv','nh','nj','nm','ny','nc','nd','oh','ok','or','pa','ri','sc','sd','tn','tx','ut','vt','va','wa','wv','wi','wy']
+
+example_truth = [LocationSeries(i, "state", list(range(20201201, 20201232)), np.random.randint(1,50,31)) for i in states] + [LocationSeries("01000", "county", list(range(20201201, 20201232)), np.random.randint(1,50,31))]
+%time sensor.compute_sensors(20210101, example_sensors, example_truth_sensor, example_truth, export_data=False) 
+%time sensor.historical_sensors(20201201, 20210102, example_sensors, example_truth_sensor, example_truth)
 ```
    
