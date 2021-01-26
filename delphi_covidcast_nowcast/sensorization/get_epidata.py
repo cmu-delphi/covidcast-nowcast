@@ -18,7 +18,7 @@ async def get(params, session, sensor, location):
         return await response.json(), sensor, location
 
 
-async def fetch_epidata(combos, day, as_of):
+async def fetch_epidata(combos, as_of):
     tasks = []
     async with ClientSession() as session:
         for sensor, location in combos:
@@ -28,7 +28,7 @@ async def fetch_epidata(combos, day, as_of):
                     "signals": sensor.signal,
                     "time_type": "day",
                     "geo_type": location.geo_type,
-                    "time_values": f"20200101-{day}",
+                    "time_values": f"20200101-{as_of}",
                     "geo_value": location.geo_value,
                     "as_of": as_of
                 }
@@ -40,13 +40,12 @@ async def fetch_epidata(combos, day, as_of):
 
 def get_indicator_data(sensors: List[SignalConfig],
                        locations: List[LocationSeries],
-                       day: int,
                        as_of: int) -> Dict[Tuple, LocationSeries]:
-    # gets all available data for now, could be optimized to only get a window
+    # gets all available data up to as_of day for now, could be optimized to only get a window
     output = {}
     all_combos = product(sensors, locations)
     loop = asyncio.get_event_loop()
-    future = asyncio.ensure_future(fetch_epidata(all_combos, day, as_of))
+    future = asyncio.ensure_future(fetch_epidata(all_combos, as_of))
     responses = loop.run_until_complete(future)
     for response, sensor, location in responses:
         if response["result"] not in (-2, 1):
@@ -66,8 +65,7 @@ def get_historical_sensor_data(sensor: SignalConfig,
                                geo_value: str,
                                geo_type: str,
                                end_date: int,
-                               start_date: int,
-                               lag: int) -> Tuple[LocationSeries, list]:
+                               start_date: int) -> Tuple[LocationSeries, list]:
     """
     Query Epidata API for historical sensorization data.
 
@@ -102,7 +100,7 @@ def get_historical_sensor_data(sensor: SignalConfig,
                                          time_values=Epidata.range(start_date, end_date),
                                          geo_value=geo_value,
                                          sensor_names=sensor.name,
-                                         lag=lag)
+                                         lag=sensor.lag)
     Epidata.BASE_URL = "https://delphi.cmu.edu/epidata/api.php"
     if response["result"] == 1:
         output = LocationSeries(
@@ -116,7 +114,6 @@ def get_historical_sensor_data(sensor: SignalConfig,
         output = LocationSeries(geo_value=geo_value, geo_type=geo_type)
     else:
         raise Exception(f"Bad result from Epidata: {response['message']}")
-
     all_dates = [int(i.strftime("%Y%m%d")) for i in date_range(str(start_date), str(end_date))]
     missing_dates = [i for i in all_dates if i not in output.dates]
     return output, missing_dates

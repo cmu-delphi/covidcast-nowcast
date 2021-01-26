@@ -38,10 +38,13 @@ def compute_regression_sensor(day: int,
     """
     previous_day = int((datetime.strptime(str(day), "%Y%m%d") - timedelta(1)).strftime("%Y%m%d"))
     first_day = max(min(covariate.dates), min(response.dates))
-    train_Y = response.get_data_range(first_day, previous_day, None)
+    try:
+        train_Y = response.get_data_range(first_day, previous_day)
+        train_covariates = covariate.get_data_range(first_day, previous_day)
+    except ValueError:
+        return np.nan
     if not train_Y:
         return np.nan
-    train_covariates = covariate.get_data_range(first_day, previous_day, None)
     train_Y, train_covariates = zip(  # only get pairs where both are not nan
         *[(i, j) for i, j in zip(train_Y, train_covariates) if not (np.isnan(i) or np.isnan(j))]
     )

@@ -37,7 +37,10 @@ def compute_ar_sensor(day: int,
         Float value of sensor on `date`
     """
     previous_day = int((datetime.strptime(str(day), "%Y%m%d") - timedelta(1)).strftime("%Y%m%d"))
-    window = values.get_data_range(min(values.dates), previous_day)
+    try:
+        window = values.get_data_range(min(values.dates), previous_day, "mean")
+    except ValueError:
+        return np.nan
     B, means, stddevs = _ar_fit(np.array(window), ar_size, lambda_)
     if B is None:
         return np.nan

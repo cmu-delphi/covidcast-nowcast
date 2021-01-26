@@ -10,6 +10,7 @@ class SignalConfig:
     source: str
     signal: str
     name: str
+    lag: int
 
 
 @dataclass
@@ -53,7 +54,7 @@ class LocationSeries:
     def get_data_range(self,
                        start_date: int,
                        end_date: int,
-                       imputation_method: Union[None, str] = "mean") -> List[float]:
+                       imputation_method: str = None) -> List[float]:
         """
         Return value of LocationSeries between two dates with optional imputation.
 

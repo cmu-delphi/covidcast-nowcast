@@ -13,7 +13,6 @@ from ..data_containers import LocationSeries, SignalConfig
 
 
 def compute_sensors(as_of_date: int,
-                    lag: int,
                     sensors: List[SignalConfig],
                     ground_truth_sensor: SignalConfig,
                     ground_truths: List[LocationSeries],
@@ -25,8 +24,6 @@ def compute_sensors(as_of_date: int,
     ----------
     as_of_date
         Date that the data should be retrieved as of.
-    lag
-        Number of days before as_of_date to generate the sensor for.
     sensors
         list of SignalConfigs for sensors to compute
     ground_truths
@@ -45,26 +42,26 @@ def compute_sensors(as_of_date: int,
         the output will be values for 20200105.
     """
     output = defaultdict(list)
-    predicted_date = int((datetime.strptime(str(as_of_date), "%Y%m%d") -
-                          timedelta(lag)).strftime("%Y%m%d"))
-    indicator_data = get_indicator_data(sensors, ground_truths, predicted_date, as_of_date)
+    indicator_data = get_indicator_data(sensors, ground_truths, as_of_date)
     for loc in ground_truths:
-        ar_sensor = compute_ar_sensor(predicted_date, loc)
+        ground_truth_pred_date = _lag_date(as_of_date, ground_truth_sensor.lag)
+        ar_sensor = compute_ar_sensor(ground_truth_pred_date, loc)
         if not np.isnan(ar_sensor):
             output[ground_truth_sensor].append(
-                LocationSeries(loc.geo_value, loc.geo_type, [predicted_date], [ar_sensor])
+                LocationSeries(loc.geo_value, loc.geo_type, [ground_truth_pred_date], [ar_sensor])
             )
         for sensor in sensors:
+            sensor_pred_date = _lag_date(as_of_date, sensor.lag)
             covariates = indicator_data.get(
                 (sensor.source, sensor.signal, loc.geo_type, loc.geo_value)
             )
             if not covariates:
                 print(f"No data: {(sensor.source, sensor.signal, loc.geo_type, loc.geo_value)}")
                 continue
-            reg_sensor = compute_regression_sensor(predicted_date, covariates, loc)
+            reg_sensor = compute_regression_sensor(sensor_pred_date, covariates, loc)
             if not np.isnan(reg_sensor):
                 output[sensor].append(
-                    LocationSeries(loc.geo_value, loc.geo_type, [predicted_date], [reg_sensor])
+                    LocationSeries(loc.geo_value, loc.geo_type, [sensor_pred_date], [reg_sensor])
                 )
     if export_data:
         pass  # TODO fill this in
@@ -73,7 +70,6 @@ def compute_sensors(as_of_date: int,
 
 def historical_sensors(start_date: int,
                        end_date: int,
-                       lag: int,
                        sensors: List[SignalConfig],
                        ground_truth_sensor: SignalConfig,
                        ground_truths: List[LocationSeries],
@@ -106,14 +102,16 @@ def historical_sensors(start_date: int,
     output = defaultdict(list)
     for location in ground_truths:
         ar_sensor, missing_dates = get_historical_sensor_data(
-            ground_truth_sensor, location.geo_type, location.geo_value, start_date, end_date, lag
+            ground_truth_sensor, location.geo_type, location.geo_value, start_date, end_date
         )
+        print(f"Missing historical AR dates: {missing_dates}")
         if not ar_sensor.empty:
             output[ground_truth_sensor].append(ar_sensor)
         for sensor in sensors:
             reg_sensor, missing_dates = get_historical_sensor_data(
-                sensor, location.geo_type, location.geo_value, start_date, end_date, lag
+                sensor, location.geo_type, location.geo_value, start_date, end_date
             )
+            print(f"Missing historical sensor {sensor} dates: {missing_dates}")
             if not reg_sensor.empty:
                 output[sensor].append(reg_sensor)
     return output
@@ -121,6 +119,7 @@ def historical_sensors(start_date: int,
 
 def _export_to_csv(value,
                    sensor,
+                   as_of_date,
                    geo_type,
                    geo_value,
                    receiving_dir="/common/covidcast_nowcast/receiving"  # convert this to use params file
@@ -131,9 +130,13 @@ def _export_to_csv(value,
     """
     export_dir = os.path.join(receiving_dir, sensor.source)
     os.makedirs(export_dir, exist_ok=True)
-    export_file = os.path.join(export_dir, f"{sensor.lagged_date}_{geo_type}_{sensor.signal}.csv")
+    time_value = _lag_date(as_of_date, sensor.lag)
+    export_file = os.path.join(export_dir, f"{time_value}_{geo_type}_{sensor.signal}.csv")
     with open(export_file, "w") as f:
-        f.write("sensor_name,geo_value,value,lag\n")
-        f.write(f"{sensor.name},{geo_value},{value},{sensor.lag}\n")
+        f.write("sensor_name,geo_value,value,lag,issue\n")
+        f.write(f"{sensor.name},{geo_value},{value},{sensor.lag},{as_of_date}\n")
     return export_file
 
+
+def _lag_date(date, lag):
+    return int((datetime.strptime(str(date), "%Y%m%d") - timedelta(lag)).strftime("%Y%m%d"))
