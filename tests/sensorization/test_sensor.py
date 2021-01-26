@@ -85,7 +85,7 @@ class TestExportToCSV:
             assert os.path.isfile(out_file)
             assert out_file.endswith("src/20200101_state_sig.csv")
             with open(out_file) as f:
-                assert f.read() == "sensor_name,geo_value,value,lag,issue\ntest,ca,1.5,4,20200105\n"
+                assert f.read() == "sensor_name,geo_value,value,issue\ntest,ca,1.5,20200105\n"
 
 
 class TestLagDate:

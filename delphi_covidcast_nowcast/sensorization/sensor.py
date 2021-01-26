@@ -133,12 +133,12 @@ def _export_to_csv(value: LocationSeries,
     if os.path.exists(export_file):
         with open(export_file, "a") as f:
             f.write(
-                f"{sensor.name},{value.geo_value},{value.get_value(time_value)},{sensor.lag},{as_of_date}\n")
+                f"{sensor.name},{value.geo_value},{value.get_value(time_value)},{as_of_date}\n")
     else:
         with open(export_file, "a") as f:
-            f.write("sensor_name,geo_value,value,lag,issue\n")
+            f.write("sensor_name,geo_value,value,issue\n")
             f.write(
-                f"{sensor.name},{value.geo_value},{value.get_value(time_value)},{sensor.lag},{as_of_date}\n")
+                f"{sensor.name},{value.geo_value},{value.get_value(time_value)},{as_of_date}\n")
 
     return export_file
 
