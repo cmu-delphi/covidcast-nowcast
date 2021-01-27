@@ -33,7 +33,6 @@ def compute_sensors(as_of_date: int,
     export_data
         boolean specifying whether computed regression sensors should be saved out to CSVs.
 
-
     Returns
     -------
         Dict where keys are sensor tuples and values are lists, where each list element is a
@@ -78,20 +77,17 @@ def historical_sensors(start_date: int,
     """
     Retrieve past sensorized values from start to end date at given locations for specified sensors.
 
-
     Parameters
     ----------
     start_date
         first day to attempt to get sensor values for.
     end_date
         last day to attempt to get sensor values for.
-    lag
-        Number of days between a desired sensor date and the data used to compute it. For example,
-        a sensor value on 2020-01-01 on lag 5 will use data as_of 2020-01-06.
     sensors
         list of SignalConfigs for sensors to retrieve.
     ground_truths
-        list of LocationSeries, one for each location desired.
+        list of LocationSeries, one for each location desired. This is only used for the list of
+        locations; none of the dates or values are used.
 
     Returns
     -------
