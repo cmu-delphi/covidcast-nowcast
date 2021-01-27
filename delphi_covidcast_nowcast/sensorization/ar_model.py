@@ -1,5 +1,5 @@
-from typing import Tuple
 from datetime import datetime, timedelta
+from typing import Tuple
 
 import numpy as np
 
@@ -8,7 +8,7 @@ from ..data_containers import LocationSeries
 
 def compute_ar_sensor(day: int,
                       values: LocationSeries,
-                      ar_size: int = 2,
+                      ar_size: int = 3,
                       lambda_: float = 0.1) -> float:
     """
     Fit AR model through least squares and get sensorization value for a given date.
