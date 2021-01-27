@@ -1,7 +1,7 @@
 """Generate ground truth signal."""
 
 import datetime
-from typing import List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 from delphi_epidata import Epidata
@@ -9,6 +9,7 @@ from scipy.linalg import toeplitz
 from scipy.sparse import diags as band
 
 from ..data_containers import LocationSeries, SignalConfig
+
 
 class TempEpidata:
 
@@ -136,8 +137,9 @@ class Deconvolution:
         return x_k
 
     @staticmethod
-    def fit_cv(y: np.ndarray, kernel: np.ndarray, cv_grid: np.ndarray, k: int = 2,
-               clip: bool = True, verbose: bool = False) -> np.ndarray:
+    def fit_cv_le3o(y: np.ndarray, kernel: np.ndarray,
+                    cv_grid: np.ndarray = np.logspace(1, 3.5, 10),
+                    k: int = 2, clip: bool = True, verbose: bool = False) -> np.ndarray:
         n = y.shape[0]
         cv_test_splits = CrossValidation.le3o_inds(y)
         cv_loss = np.zeros((cv_grid.shape[0],))
@@ -150,6 +152,28 @@ class Deconvolution:
                 x_hat = CrossValidation.impute_missing(x_hat)
                 y_hat = Deconvolution.freq_convolve(x_hat, kernel)
                 cv_loss[j] += np.sum((y[test_split] - y_hat[test_split]) ** 2)
+
+        lam = cv_grid[np.argmin(cv_loss)]
+        if verbose: print(f"Chosen parameter: {lam:.4}")
+        x_hat = Deconvolution.fit(y, kernel, lam, k=k)
+        return x_hat
+
+    @staticmethod
+    def fit_cv_forward(y: np.ndarray, kernel: np.ndarray,
+                       cv_grid: np.ndarray = np.logspace(1, 3.5, 10),
+                       k: int = 2, n_folds: int = 5,
+                       clip: bool = True, verbose: bool = False) -> np.ndarray:
+        n = y.shape[0]
+        cv_loss = np.zeros((cv_grid.shape[0],))
+        for i in range(1, n_folds + 1):
+            if verbose: print(f"Fitting fold {i}/{n_folds}")
+            for j, reg_par in enumerate(cv_grid):
+                x_hat = np.full((n - i + 1,), np.nan)
+                x_hat[:(n - i)] = Deconvolution.fit(y[:(n - i)], kernel,
+                                                    reg_par, k=k, clip=clip)
+                x_hat[-1] = x_hat[-2]
+                y_hat = Deconvolution.freq_convolve(x_hat, kernel)
+                cv_loss[j] += (y[-1] - y_hat[-1]) ** 2
 
         lam = cv_grid[np.argmin(cv_loss)]
         if verbose: print(f"Chosen parameter: {lam:.4}")
@@ -208,7 +232,8 @@ class CrossValidation:
 def deconvolve_signal(convolved_truth_indicator: SignalConfig,
                       input_dates: List[int],
                       input_locations: List[Tuple[str, str]],
-                      kernel: np.ndarray
+                      kernel: np.ndarray,
+                      fit_func: Callable = Deconvolution.fit_cv_forward,
                       ) -> List[LocationSeries]:
     """
     Compute ground truth signal value by deconvolving an indicator with a delay distribution.
@@ -225,14 +250,14 @@ def deconvolve_signal(convolved_truth_indicator: SignalConfig,
         List of (location, geo_type) tuples specifying locations to train and obtain nowcasts for.
     kernel
         Delay distribution from infection to report.
+    fit_func
+        Fitting function for the deconvolution.
 
     Returns
     -------
         dataclass with deconvolved signal and corresponding location/dates
     """
 
-    # lambda grid to search over, todo: should make finer in prod
-    cv_grid = np.logspace(1, 3.5, 10)
     n_locs = len(input_locations)
 
     # full date range (input_dates can be discontinuous)
@@ -257,9 +282,9 @@ def deconvolve_signal(convolved_truth_indicator: SignalConfig,
         # todo: better handle missing dates/locations
         if convolved_truth is not None:
             deconvolved_truth.append(LocationSeries(loc, geo_type, convolved_truth.dates,
-                                                    Deconvolution.fit_cv(
+                                                    fit_func(
                                                         convolved_truth.values,
-                                                        kernel, cv_grid)
+                                                        kernel)
                                                     ))
         else:
             deconvolved_truth.append(LocationSeries(loc, geo_type, full_dates,
