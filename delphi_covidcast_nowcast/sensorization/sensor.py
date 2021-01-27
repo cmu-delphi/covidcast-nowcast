@@ -114,19 +114,19 @@ def _export_to_csv(value: LocationSeries,
 
     NOT DONE YET
     """
-    export_dir = os.path.join(receiving_dir, sensor.source)
+    export_dir = os.path.join(receiving_dir, f"issue_{as_of_date}", sensor.source)
     os.makedirs(export_dir, exist_ok=True)
     time_value = value.dates[0]
     export_file = os.path.join(export_dir, f"{time_value}_{value.geo_type}_{sensor.signal}.csv")
     if os.path.exists(export_file):
         with open(export_file, "a") as f:
             f.write(
-                f"{sensor.name},{value.geo_value},{value.get_value(time_value)},{as_of_date}\n")
+                f"{sensor.name},{value.geo_value},{value.get_value(time_value)}\n")
     else:
         with open(export_file, "a") as f:
-            f.write("sensor_name,geo_value,value,issue\n")
+            f.write("sensor_name,geo_value,value\n")
             f.write(
-                f"{sensor.name},{value.geo_value},{value.get_value(time_value)},{as_of_date}\n")
+                f"{sensor.name},{value.geo_value},{value.get_value(time_value)}\n")
 
     return export_file
 

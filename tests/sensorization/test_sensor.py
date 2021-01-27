@@ -81,9 +81,9 @@ class TestExportToCSV:
         with tempfile.TemporaryDirectory() as tmpdir:
             out_file = _export_to_csv(test_value, test_sensor, 20200105, receiving_dir=tmpdir)
             assert os.path.isfile(out_file)
-            assert out_file.endswith("src/20200101_state_sig.csv")
+            assert out_file.endswith("issue_20200105/src/20200101_state_sig.csv")
             with open(out_file) as f:
-                assert f.read() == "sensor_name,geo_value,value,issue\ntest,ca,1.5,20200105\n"
+                assert f.read() == "sensor_name,geo_value,value\ntest,ca,1.5\n"
 
 
 class TestLagDate:

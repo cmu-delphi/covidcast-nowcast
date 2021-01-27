@@ -37,7 +37,8 @@ This module contains methods for collecting metrics on the database server under
 5. Using the [Docker tutorials](https://github.com/cmu-delphi/delphi-epidata/blob/main/docs/epidata_development.md),
    install Docker and clone all the relevant repositories to a working directory. Do not build the images yet.
 4. Generate or obtain any historical data you would like to use, with sub folders corresponding to the production ingestion structure: 
-   `common/covidcast_nowcast/receiving/<data_source>/<filename>`. Put these files in the same working directory. 
+   `common/covidcast_nowcast/receiving/issue_<issuedate>/<data_source>/<filename>`. Note that the issue, source, and filename 
+   are set by the code. Put these files in the same working directory. 
    You may want to edit the `_export_csv()` output directory (`receiving_dir`) to this location for convenience, e.g. 
    `receiving_dir="/home/andrew/Documents/docker-delphi/common/covidcast_nowcast/receiving/"`.
    Your working directory should look like this:  
