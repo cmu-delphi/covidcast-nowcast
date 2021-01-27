@@ -17,11 +17,10 @@ class TestHisoricalSensors:
         historical.side_effect = [(LocationSeries(dates=[1], values=[2]), []),
                                   (LocationSeries(dates=[3], values=[4]), []),
                                   (LocationSeries(), [])]
-        test_sensors = [SignalConfig("a", "b", "c", 1), SignalConfig("x", "y", "z", 2)]
-        test_ground_truth_sensor = SignalConfig("i", "j", "k", 3)
+        test_sensors = [SignalConfig("i", "j", "k", 3), SignalConfig("a", "b", "c", 1), SignalConfig("x", "y", "z", 2)]
         test_ground_truth = [LocationSeries("ca", "state")]
         assert historical_sensors(
-            None, None, test_sensors, test_ground_truth_sensor, test_ground_truth) == {
+            None, None, test_sensors, test_ground_truth) == {
             SignalConfig("i", "j", "k", 3): [LocationSeries(dates=[1], values=[2])],
             SignalConfig("a", "b", "c", 1): [LocationSeries(dates=[3], values=[4])]
         }
@@ -30,11 +29,10 @@ class TestHisoricalSensors:
     def test_historical_sensors_no_data(self, historical):
         """Test nothing returned"""
         historical.return_value = (LocationSeries(), [])
-        test_sensors = [SignalConfig("a", "b", "c", 1), SignalConfig("x", "y", "z", 2)]
-        test_ground_truth_sensor = SignalConfig("i", "j", "k", 3)
+        test_sensors = [SignalConfig("i", "j", "k", 3), SignalConfig("a", "b", "c", 1), SignalConfig("x", "y", "z", 2)]
         test_ground_truth = [LocationSeries("ca", "state")]
         assert historical_sensors(
-            None, None, test_sensors, test_ground_truth_sensor, test_ground_truth) == {}
+            None, None, test_sensors, test_ground_truth) == {}
 
 
 class TestComputeSensors:

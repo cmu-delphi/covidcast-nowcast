@@ -13,7 +13,7 @@ from ..data_containers import LocationSeries, SignalConfig
 
 
 def compute_sensors(as_of_date: int,
-                    sensors: List[SignalConfig],
+                    regression_sensors: List[SignalConfig],
                     ground_truth_sensor: SignalConfig,
                     ground_truths: List[LocationSeries],
                     export_data: bool
@@ -24,12 +24,12 @@ def compute_sensors(as_of_date: int,
     ----------
     as_of_date
         Date that the data should be retrieved as of.
-    sensors
-        list of SignalConfigs for sensors to compute
+    regression_sensors
+        list of SignalConfigs for regression sensors to compute.
+    ground_truth_sensor
+        SignalConfig of the ground truth signal which is used for the AR sensor.
     ground_truths
         list of LocationSeries, one for each location desired.
-    ground_truth_sensor
-        SignalConfig of the ground truth
     export_data
         boolean specifying whether computed regression sensors should be saved out to CSVs.
 
@@ -42,7 +42,7 @@ def compute_sensors(as_of_date: int,
         the output will be values for 20200105.
     """
     output = defaultdict(list)
-    indicator_data = get_indicator_data(sensors, ground_truths, as_of_date)
+    indicator_data = get_indicator_data(regression_sensors, ground_truths, as_of_date)
     for loc in ground_truths:
         ground_truth_pred_date = _lag_date(as_of_date, ground_truth_sensor.lag)
         ar_sensor = compute_ar_sensor(ground_truth_pred_date, loc)
@@ -50,7 +50,7 @@ def compute_sensors(as_of_date: int,
             output[ground_truth_sensor].append(
                 LocationSeries(loc.geo_value, loc.geo_type, [ground_truth_pred_date], [ar_sensor])
             )
-        for sensor in sensors:
+        for sensor in regression_sensors:
             sensor_pred_date = _lag_date(as_of_date, sensor.lag)
             covariates = indicator_data.get(
                 (sensor.source, sensor.signal, loc.geo_type, loc.geo_value)
@@ -73,7 +73,6 @@ def compute_sensors(as_of_date: int,
 def historical_sensors(start_date: int,
                        end_date: int,
                        sensors: List[SignalConfig],
-                       ground_truth_sensor: SignalConfig,
                        ground_truths: List[LocationSeries],
                        ) -> DefaultDict[SignalConfig, List[LocationSeries]]:
     """
@@ -90,11 +89,9 @@ def historical_sensors(start_date: int,
         Number of days between a desired sensor date and the data used to compute it. For example,
         a sensor value on 2020-01-01 on lag 5 will use data as_of 2020-01-06.
     sensors
-        list of SignalConfigs for sensors to retrieve
+        list of SignalConfigs for sensors to retrieve.
     ground_truths
         list of LocationSeries, one for each location desired.
-    ground_truth_sensor
-        SignalConfig of the ground truth
 
     Returns
     -------
@@ -103,24 +100,19 @@ def historical_sensors(start_date: int,
     """
     output = defaultdict(list)
     for location in ground_truths:
-        ar_sensor, missing_dates = get_historical_sensor_data(
-            ground_truth_sensor, location.geo_value, location.geo_type, start_date, end_date
-        )
-        if not ar_sensor.empty:
-            output[ground_truth_sensor].append(ar_sensor)
         for sensor in sensors:
-            reg_sensor, missing_dates = get_historical_sensor_data(
+            sensor_vals, missing_dates = get_historical_sensor_data(
                 sensor, location.geo_value, location.geo_type, start_date, end_date
             )
-            if not reg_sensor.empty:
-                output[sensor].append(reg_sensor)
+            if not sensor_vals.empty:
+                output[sensor].append(sensor_vals)
     return output
 
 
 def _export_to_csv(value: LocationSeries,
                    sensor: SignalConfig,
                    as_of_date: int,
-                   receiving_dir: str="./receiving"  # convert this to use params file
+                   receiving_dir: str = "./receiving"  # convert this to use params file and eventually be /common/covidcast_nowcast/receiving/
                    ) -> str:
     """Save value to csv for upload to epidata database
 
