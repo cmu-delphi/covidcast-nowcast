@@ -17,7 +17,7 @@ class Locations:
     def __init__(self):
         # load fips-population mapping
         self.fips_pop_map = pd.read_csv(
-            'delphi_covidcast_nowcast/statespace/fips_pop.csv',
+            './statespace/fips_pop.csv',
             dtype={'fips': str, 'pop': int})
 
         # avoid 'pop' reserved method name
@@ -25,12 +25,12 @@ class Locations:
 
         # load msa->county mapping
         self.fips_msa_map = pd.read_csv(
-            'delphi_covidcast_nowcast/statespace/fips_msa_table.csv', dtype=str)
+            './statespace/fips_msa_table.csv', dtype=str)
         self.counties_from_msa = self.fips_msa_map.groupby('msa')['fips'].apply(list)
 
         # load state->county mapping
         fips_state_map = pd.read_csv(
-            'delphi_covidcast_nowcast/statespace/fips_state_table.csv', dtype=str)
+            './statespace/fips_state_table.csv', dtype=str)
 
         # attach population
         self.fips_state_map = fips_state_map.merge(self.fips_pop_map, how="left",
