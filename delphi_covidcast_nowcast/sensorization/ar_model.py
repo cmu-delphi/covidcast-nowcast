@@ -30,7 +30,7 @@ def compute_ar_sensor(day: int,
     ar_size
         Order of autoregressive model.
     lambda_
-        l2 regularization coefficient. If >0, covariates will be standardized before fitting.
+        l2 regularization coefficient.
 
     Returns
     -------
@@ -79,8 +79,7 @@ def _ar_fit(values: np.array,
 
     Returns
     -------
-        Tuple of (fitted coefficients, mean vector, stddev vector). If standardize is False,
-        mean will be 0 stddev vector will be 1, which will be a no-op.
+        Tuple of (fitted coefficients, mean vector, stddev vector).
     """
     num_observations = len(values) - ar_size
     if num_observations < 2 * (ar_size + 1):  # 1 for intercept
