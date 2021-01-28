@@ -1,6 +1,6 @@
 """
 ====================================================================
-THIS CODE IS COPY PASTED FROM
+THIS CODE IS COPIED FROM
 https://github.com/cmu-delphi/nowcast/blob/main/src/fusion/fusion.py
 ====================================================================
 
