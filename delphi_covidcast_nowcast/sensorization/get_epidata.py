@@ -9,7 +9,7 @@ from aiohttp import ClientSession
 # from ..delphi_epidata import Epidata  # used for local testing
 from delphi_epidata import Epidata
 
-from ..data_containers import LocationSeries, SignalConfig
+from ..data_containers import LocationSeries, SensorConfig
 
 
 async def get(params, session, sensor, location):
@@ -39,7 +39,7 @@ async def fetch_epidata(combos, as_of):
         return responses
 
 
-def get_indicator_data(sensors: List[SignalConfig],
+def get_indicator_data(sensors: List[SensorConfig],
                        locations: List[LocationSeries],
                        as_of: int) -> Dict[Tuple, LocationSeries]:
     """
@@ -48,7 +48,7 @@ def get_indicator_data(sensors: List[SignalConfig],
     Parameters
     ----------
     sensors
-        list of SignalConfigs for sensors to retrieve.
+        list of SensorConfigs for sensors to retrieve.
     locations
         list of LocationSeries, one for each location desired. This is only used for the list of
         locations; none of the dates or values are used.
@@ -79,7 +79,7 @@ def get_indicator_data(sensors: List[SignalConfig],
     return output
 
 
-def get_historical_sensor_data(sensor: SignalConfig,
+def get_historical_sensor_data(sensor: SensorConfig,
                                geo_value: str,
                                geo_type: str,
                                end_date: int,
@@ -93,7 +93,7 @@ def get_historical_sensor_data(sensor: SignalConfig,
     Parameters
     ----------
     sensor
-        SignalConfig specifying which sensor to retrieve.
+        SensorConfig specifying which sensor to retrieve.
     geo_type
         Geo type to retrieve.
     geo_value

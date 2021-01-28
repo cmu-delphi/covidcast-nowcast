@@ -8,7 +8,7 @@ from delphi_epidata import Epidata
 from scipy.linalg import toeplitz
 from scipy.sparse import diags as band
 
-from ..data_containers import LocationSeries, SignalConfig
+from ..data_containers import LocationSeries, SensorConfig
 
 
 class TempEpidata:
@@ -229,7 +229,7 @@ class CrossValidation:
         return imputed_x
 
 
-def deconvolve_signal(convolved_truth_indicator: SignalConfig,
+def deconvolve_signal(convolved_truth_indicator: SensorConfig,
                       input_dates: List[int],
                       input_locations: List[Tuple[str, str]],
                       kernel: np.ndarray,

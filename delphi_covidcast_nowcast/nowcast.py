@@ -4,7 +4,7 @@ from typing import List, Tuple
 
 import numpy as np
 
-from delphi_covidcast_nowcast.data_containers import SignalConfig
+from delphi_covidcast_nowcast.data_containers import SensorConfig
 from delphi_covidcast_nowcast.deconvolution.deconvolution import deconvolve_signal
 from delphi_covidcast_nowcast.nowcast_fusion import covariance, fusion
 from delphi_covidcast_nowcast.sensorization.sensor import historical_sensors
@@ -13,8 +13,8 @@ from delphi_covidcast_nowcast.statespace.statespace import generate_statespace
 
 def nowcast(input_dates: List[int],
             input_locations: List[Tuple[str, str]],
-            sensor_indicators: List[SignalConfig],
-            convolved_truth_indicator: SignalConfig,
+            sensor_indicators: List[SensorConfig],
+            convolved_truth_indicator: SensorConfig,
             kernel: List[float],
             nowcast_dates: List[int] = "*",
             use_latest_issue: bool = True,

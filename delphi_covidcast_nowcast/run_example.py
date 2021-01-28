@@ -2,7 +2,7 @@
 
 import delphi_covidcast_nowcast.deconvolution.delay_kernel as delay
 import delphi_covidcast_nowcast.nowcast as nowcast
-from delphi_covidcast_nowcast.data_containers import SignalConfig
+from delphi_covidcast_nowcast.data_containers import SensorConfig
 
 
 def main():
@@ -11,9 +11,9 @@ def main():
                        ('42003', 'county'),
                        ('42005', 'county'),
                        ('42101', 'county')]
-    sensor_indicators = [SignalConfig('usa-facts', 'confirmed_incidence_num', 'ar3'),
-                         SignalConfig('fb-survey', 'smoothed_hh_cmnty_cli', 'fb')]
-    convolved_truth_indicator = SignalConfig(source='usa-facts',
+    sensor_indicators = [SensorConfig('usa-facts', 'confirmed_incidence_num', 'ar3'),
+                         SensorConfig('fb-survey', 'smoothed_hh_cmnty_cli', 'fb')]
+    convolved_truth_indicator = SensorConfig(source='usa-facts',
                                              signal='confirmed_incidence_num')
     kernel = delay.get_florida_delay_distribution()
     nowcast_dates = [20200615]

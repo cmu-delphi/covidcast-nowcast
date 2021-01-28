@@ -6,7 +6,7 @@ from pandas import date_range
 
 
 @dataclass(frozen=True)
-class SignalConfig:
+class SensorConfig:
     source: str
     signal: str
     name: str
