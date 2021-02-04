@@ -1,14 +1,14 @@
 """Generate ground truth signal."""
 
 import datetime
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, List, Tuple, Union
 
 import numpy as np
-from delphi_epidata import Epidata
 from scipy.linalg import toeplitz
 from scipy.sparse import diags as band
 
 from ..data_containers import LocationSeries, SensorConfig
+from ..sensorization.get_epidata import get_indicator_data
 
 
 def _construct_convolution_matrix(signal: np.ndarray,
@@ -135,7 +135,7 @@ def deconvolve_tf_cv(y: np.ndarray,
                      kernel: np.ndarray,
                      method: str = "forward",
                      cv_grid: np.ndarray = np.logspace(1, 3.5, 10),
-                     n_folds: int = 3,
+                     n_folds: int = 5,
                      n_iters: int = 100,
                      k: int = 2,
                      clip: bool = True,
@@ -151,6 +151,7 @@ def deconvolve_tf_cv(y: np.ndarray,
           the fitted value for t. The n_folds argument decides the number of points
           to hold out, and then "walk forward".
 
+    The smoothness parameter with the smallest mean-squared error is chosen.
 
     Parameters
     ----------
@@ -178,8 +179,7 @@ def deconvolve_tf_cv(y: np.ndarray,
         array of the deconvolved signal values
     """
 
-    assert (
-        method in {"le3o", "forward"},
+    assert method in {"le3o", "forward"}, (
         "cv method specified should be one of {'le3o', 'forward'}"
     )
 
@@ -187,15 +187,10 @@ def deconvolve_tf_cv(y: np.ndarray,
     cv_loss = np.zeros((cv_grid.shape[0],))
 
     if method == "le3o":
-        # get test indices for a leave-every-three-out CV.
-        cv_test_splits = []
         for i in range(3):
-            test_idx = np.zeros((n,), dtype=bool)
-            test_idx[i::3] = True
-            cv_test_splits.append(test_idx)
-
-        for i, test_split in enumerate(cv_test_splits):
-            if verbose: print(f"Fitting fold {i}/{len(cv_test_splits)}")
+            if verbose: print(f"Fitting fold {i}/3")
+            test_split = np.zeros((n,), dtype=bool)
+            test_split[i::3] = True
             for j, reg_par in enumerate(cv_grid):
                 x_hat = np.full((n,), np.nan)
                 x_hat[~test_split] = deconvolve_tf(y[~test_split], kernel, reg_par,
@@ -203,7 +198,6 @@ def deconvolve_tf_cv(y: np.ndarray,
                 x_hat = _impute_with_neighbors(x_hat)
                 y_hat = _fft_convolve(x_hat, kernel)
                 cv_loss[j] += np.sum((y[test_split] - y_hat[test_split]) ** 2)
-
     elif method == "forward":
         for i in range(1, n_folds + 1):
             if verbose: print(f"Fitting fold {i}/{n_folds}")
@@ -252,33 +246,11 @@ def _impute_with_neighbors(x: np.ndarray) -> np.ndarray:
     return imputed_x
 
 
-class TempEpidata:
-
-    @staticmethod
-    def to_date(date: Union[int, str], fmt: str = '%Y%m%d') -> datetime.date:
-        return datetime.datetime.strptime(str(date), fmt).date()
-
-    @staticmethod
-    def get_signal_range(source: str, signal: str, start_date: int, end_date: int,
-                         geo_type: str, geo_value: Union[int, str, float]
-                         ) -> Optional[LocationSeries]:
-        response = Epidata.covidcast(source, signal, 'day', geo_type,
-                                     Epidata.range(start_date, end_date),
-                                     geo_value)
-        if response['result'] != 1:
-            print(f'api returned {response["result"]}: {response["message"]}')
-            return None
-        values = [(row['time_value'], row['value']) for row in response['epidata']]
-        values = sorted(values, key=lambda ab: ab[0])
-        return LocationSeries(geo_value, geo_type,
-                              [ab[0] for ab in values],
-                              np.array([ab[1] for ab in values]))
-
-
 def deconvolve_signal(convolved_truth_indicator: SensorConfig,
                       input_dates: List[int],
                       input_locations: List[Tuple[str, str]],
                       kernel: np.ndarray,
+                      as_of_date: int,
                       fit_func: Callable = deconvolve_tf_cv,
                       ) -> List[LocationSeries]:
     """
@@ -299,50 +271,63 @@ def deconvolve_signal(convolved_truth_indicator: SensorConfig,
         List of (location, geo_type) tuples specifying locations to train and obtain nowcasts for.
     kernel
         Delay distribution from infection to report.
+    as_of_date:
+        Date that the data should be retrieved as of.
     fit_func
         Fitting function for the deconvolution.
 
     Returns
     -------
-        dataclass with deconvolved signal and corresponding location/dates
+        list of LocationSeries for the deconvolved signal
     """
 
     n_locs = len(input_locations)
 
+    def _to_date(date: Union[int, str], fmt: str = '%Y%m%d') -> datetime.date:
+        """Convert date to datetime object, using specified fmt."""
+        return datetime.datetime.strptime(str(date), fmt).date()
+
     # full date range (input_dates can be discontinuous)
-    start_date = TempEpidata.to_date(input_dates[0])
-    end_date = TempEpidata.to_date(input_dates[-1])
+    start_date = _to_date(input_dates[0])
+    end_date = _to_date(input_dates[-1])
     n_full_dates = (end_date - start_date).days + 1
     full_dates = [start_date + datetime.timedelta(days=a) for a in range(n_full_dates)]
     full_dates = [int(d.strftime('%Y%m%d')) for d in full_dates]
 
-    # output corresponds to order of input_locations
-    deconvolved_truth = []
-    for j, (loc, geo_type) in enumerate(input_locations):
-        # epidata call to get convolved truth
-        # note: returns signal over input dates, continuous. addtl filtering needed if
-        # input dates is not continuous/missing dates. We can't filter here, because
-        # deconvolution requires a complete time series.
-        convolved_truth = TempEpidata.get_signal_range(convolved_truth_indicator.source,
-                                                       convolved_truth_indicator.signal,
-                                                       input_dates[0], input_dates[-1],
-                                                       geo_type, loc)
+    # retrieve convolved signal
+    combo_keys = []
+    combo_series = []
+    for loc, geo_type in input_locations:
+        # output corresponds to order of input_locations
+        combo_keys.append((convolved_truth_indicator.source,
+                           convolved_truth_indicator.signal,
+                           geo_type, loc))
+        combo_series.append(LocationSeries(loc, geo_type))
 
-        # todo: better handle missing dates/locations
-        if convolved_truth is not None:
-            deconvolved_truth.append(LocationSeries(loc, geo_type, convolved_truth.dates,
+    # epidata call to get convolved truth
+    combo_convolved_truth = get_indicator_data([convolved_truth_indicator],
+                                               combo_series,
+                                               as_of_date)
+
+    # perform deconvolution on each location individually
+    deconvolved_truth = []
+    for j, loc_key in enumerate(combo_keys):
+        _, _, geo_type, loc = loc_key
+        if loc_key in combo_convolved_truth:
+            convolved_truth = combo_convolved_truth[loc_key]
+            convolved_truth = convolved_truth.get_data_range(input_dates[0],
+                                                             input_dates[-1])
+            deconvolved_truth.append(LocationSeries(loc,
+                                                    geo_type,
+                                                    full_dates,
                                                     fit_func(
-                                                        convolved_truth.values,
-                                                        kernel)
-                                                    ))
+                                                        np.array(convolved_truth),
+                                                        kernel
+                                                    )))
         else:
             deconvolved_truth.append(LocationSeries(loc, geo_type, full_dates,
                                                     np.full((n_full_dates,), np.nan)))
 
         if (j + 1) % 25 == 0: print(f"Deconvolved {j}/{n_locs}")
-
-    # filter for desired input dates
-    # input_idx = [i for i, date in enumerate(full_dates) if date in input_dates]
-    # deconvolved_truth = deconvolved_truth[input_idx, :]
 
     return deconvolved_truth
