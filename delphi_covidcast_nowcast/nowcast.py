@@ -16,8 +16,8 @@ def nowcast(input_dates: List[int],
             sensor_indicators: List[SensorConfig],
             convolved_truth_indicator: SensorConfig,
             kernel: List[float],
+            as_of_date: int,
             nowcast_dates: List[int] = "*",
-            use_latest_issue: bool = True,
             ) -> Tuple[np.ndarray, np.ndarray, List]:
     """
 
@@ -33,11 +33,10 @@ def nowcast(input_dates: List[int],
         (source, signal) tuple of quantity to deconvolve.
     kernel
         Delay distribution to deconvolve with convolved_truth_indicator
+    as_of_date
+        Date that the data should be retrieved as of.
     nowcast_dates
         Dates to get predictions for. Defaults to input_dates + additional day.
-    use_latest_issue
-        boolean specifying whether to use the latest issue to compute missing sensor values. If
-        False, will use the data that was available as of the target date.
 
     Returns
     -------
@@ -50,20 +49,23 @@ def nowcast(input_dates: List[int],
         raise Exception('none or multiple US state locations specified')
 
     # deconvolve for ground truth
-    ground_truth = deconvolve_signal(convolved_truth_indicator, input_dates,
-                                     input_locations, np.array(kernel))
+
+    ground_truth = deconvolve_signal(convolved_truth_indicator,
+                                     input_dates,
+                                     input_locations,
+                                     np.array(kernel),
+                                     as_of_date)
 
     # fit sensors
-    train_sensors = historical_sensors(input_dates[0], input_dates[-1],
-                                       sensor_indicators, ground_truth,
-                                       # ground_truth = None if compute_missing=False
-                                       compute_missing=True,  # change to false once we have DB
-                                       use_latest_issue=use_latest_issue)
+    train_sensors = historical_sensors(input_dates[0],
+                                       input_dates[-1],
+                                       sensor_indicators,
+                                       ground_truth)
 
-    now_sensors = historical_sensors(nowcast_dates[0], nowcast_dates[0],
-                                     sensor_indicators, ground_truth,
-                                     compute_missing=True,
-                                     use_latest_issue=use_latest_issue)
+    now_sensors = historical_sensors(nowcast_dates[0],
+                                     nowcast_dates[0],
+                                     sensor_indicators,
+                                     ground_truth)
 
     ## put into matrix form
     # convert to dict indexed by loc to make matching across train/now easier
